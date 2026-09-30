@@ -1,0 +1,13 @@
+{
+  "name": "gilb-metrics-parser",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Парсер Python-кода для расчёта метрик Джилба (CL, cl, CLI)",
+  "scripts": {
+    "build": "node scripts/embed-sample.mjs && tsc -p .",
+    "test": "npm run build && node test/run-tests.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

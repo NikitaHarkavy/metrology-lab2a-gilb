@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Метрики Джилба — парсер Python</title>
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="dist/lexer.js"></script>
+  <script src="dist/analyzer.js"></script>
+  <script src="dist/sample.js"></script>
+  <script src="dist/ui.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">CL</div>
+      <div>
+        <h1>Метрики Джилба</h1>
+        <p>Анализатор сложности потока управления программ на Python</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btn-open" type="button">Открыть файл…</button>
+      <button id="btn-sample" type="button">Пример</button>
+      <button id="btn-clear" type="button">Очистить</button>
+      <button id="btn-analyze" type="button" class="primary">Анализировать</button>
+      <input id="file-input" type="file" accept=".py,.pyw,.txt" hidden>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel editor-panel" id="editor-pane">
+      <div class="panel-head">
+        <h2>Исходный код</h2>
+        <span class="muted"><span id="file-name">process_matrix.py</span> · <span id="line-count"></span></span>
+      </div>
+      <div class="editor-wrap">
+        <div id="gutter" class="gutter" aria-hidden="true"></div>
+        <textarea id="editor" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea>
+      </div>
+      <div class="legend">
+        <span><i class="dot cond"></i>строка с условным оператором</span>
+        <span><i class="dot deepest"></i>максимальная вложенность</span>
+      </div>
+    </section>
+
+    <section class="panel results-panel">
+      <div id="error" class="error" hidden></div>
+      <div id="results">
+        <h2 class="results-title">Результат анализа</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-symbol">CL</div>
+            <div class="card-label">Абсолютная сложность CL</div>
+            <div class="card-value" id="cl-abs">0</div>
+          </div>
+          <div class="card">
+            <div class="card-symbol">cl = CL / N</div>
+            <div class="card-label">Относительная сложность cl</div>
+            <div class="card-value" id="cl-rel">0</div>
+            <div class="card-note" id="cl-rel-formula"></div>
+          </div>
+          <div class="card">
+            <div class="card-symbol">CLI</div>
+            <div class="card-label">Максимальный уровень вложенности CLI</div>
+            <div class="card-value" id="cli">0</div>
+            <div class="card-note" id="cli-note"></div>
+          </div>
+        </div>
+        <div class="control">
+          <h3>Контрольные данные</h3>
+          <p>Всего операторов N: <b id="n-total">0</b></p>
+        </div>
+
+        <nav class="tabs">
+          <button class="tab active" data-tab="cond" type="button">Условия <span class="badge" id="tab-count-cond">0</span></button>
+          <button class="tab" data-tab="ops" type="button">Операторы <span class="badge" id="tab-count-ops">0</span></button>
+          <button class="tab" data-tab="rules" type="button">Правила подсчёта</button>
+        </nav>
+        <div class="tab-page" id="page-cond">
+          <table>
+            <thead><tr><th>№</th><th>Строка</th><th>Оператор</th><th>Условие</th><th>Вложенность</th></tr></thead>
+            <tbody id="cond-body"></tbody>
+          </table>
+        </div>
+        <div class="tab-page" id="page-ops" hidden>
+          <table>
+            <thead><tr><th>№</th><th>Строка</th><th>Вид</th><th>Оператор</th></tr></thead>
+            <tbody id="ops-body"></tbody>
+          </table>
+        </div>
+        <div class="tab-page rules" id="page-rules" hidden>
+          <p><b>CL</b> — абсолютная сложность: число условных операторов. Считаются <code>if</code> и каждая ветвь
+            <code>elif</code>, циклы <code>for</code> и <code>while</code>, каждая ветвь <code>case</code> оператора
+            <code>match</code>, условное выражение <code>a if c else b</code>, а также <code>for</code> и <code>if</code>
+            внутри генераторов списков.</p>
+          <p>Селектор <code>match</code> и ветвь по умолчанию <code>case _</code> условиями не являются;
+            <code>else</code> (у <code>if</code> и у циклов) отдельным условием не считается.</p>
+          <p><b>N</b> — общее число операторов: присваивания, вызовы функций, <code>return</code>, <code>break</code>,
+            <code>continue</code>, <code>pass</code>, <code>import</code> и т. п., а также по одному оператору
+            <code>if</code>, <code>elif</code>, <code>for</code>, <code>while</code>, <code>match</code>, <code>try</code>,
+            <code>with</code>. Не считаются <code>else</code>, <code>case</code>, <code>except</code>,
+            <code>finally</code>, объявления <code>def</code>/<code>class</code>, декораторы и строки документации.</p>
+          <p><b>cl</b> = CL / N — относительная сложность (насыщенность программы условными операторами).</p>
+          <p><b>CLI</b> — максимальный уровень вложенности условного оператора. Оператор <code>match</code> заменяется
+            вложенными друг в друга условиями (каждая следующая ветвь <code>case</code> вложена в предыдущую), ветвь
+            <code>elif</code> вложена в предыдущий <code>if</code>. Условный оператор, не вложенный ни в одно условие,
+            имеет уровень 0.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
